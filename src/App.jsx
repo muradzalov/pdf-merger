@@ -76,14 +76,24 @@ function PdfMerger() {
     }
 
     setMerging(true)
+    const failed = []
     try {
       const mergedPdf = await PDFDocument.create()
 
       for (const file of files) {
-        const arrayBuffer = await file.arrayBuffer()
-        const pdf = await PDFDocument.load(arrayBuffer)
-        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
-        pages.forEach((page) => mergedPdf.addPage(page))
+        try {
+          const arrayBuffer = await file.arrayBuffer()
+          const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true, throwOnInvalidObject: false })
+          const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+          pages.forEach((page) => mergedPdf.addPage(page))
+        } catch (err) {
+          failed.push({ name: file.name, reason: err.message })
+        }
+      }
+
+      if (mergedPdf.getPageCount() === 0) {
+        messageApi.error('No PDFs could be merged. All files failed to load.')
+        return
       }
 
       const mergedBytes = await mergedPdf.save()
@@ -94,7 +104,15 @@ function PdfMerger() {
       link.download = 'merged.pdf'
       link.click()
       URL.revokeObjectURL(url)
-      messageApi.success('PDF merged and downloaded!')
+
+      if (failed.length > 0) {
+        messageApi.warning({
+          content: `Merged ${files.length - failed.length} of ${files.length}. Skipped: ${failed.map((f) => f.name).join(', ')}`,
+          duration: 10,
+        })
+      } else {
+        messageApi.success('PDF merged and downloaded!')
+      }
     } catch (err) {
       messageApi.error('Failed to merge PDFs: ' + err.message)
     } finally {
