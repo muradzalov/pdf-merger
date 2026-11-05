@@ -1,3 +1,12 @@
+/** Turns what the user typed into a usable file name ending in .pdf (falls back to "merged.pdf"). */
+export function toPdfFileName(input: string): string {
+  const base = input
+    .trim()
+    .replace(/\.pdf$/i, '')
+    .replace(/[\\/:*?"<>|]/g, '_') // characters Windows doesn't allow in file names
+  return `${base || 'merged'}.pdf`
+}
+
 /** Saves the bytes as a PDF through the browser's normal download flow. */
 export function downloadPdf(bytes: Uint8Array, filename: string) {
   // pdf-lib always returns ArrayBuffer-backed bytes, but its types don't say so (TS 5.7+ is strict about this).

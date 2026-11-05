@@ -1,12 +1,17 @@
 import exifr from 'exifr'
-import { degrees, type PDFDocument } from 'pdf-lib'
+import type { PDFDocument } from 'pdf-lib'
+import { rotatePage } from './rotatePage'
 
 /** Resolution assumed when a JPEG doesn't record one: 1 pixel = 1 point. */
 const DEFAULT_DPI = 72
 /** Largest page side PDF viewers reliably accept, in points (200 inches). */
 const MAX_PAGE_SIDE = 14400
-/** EXIF Orientation value → clockwise page rotation that shows the image upright. */
-const ROTATION_FOR_ORIENTATION: Record<number, number> = { 3: 180, 6: 90, 8: 270 }
+/**
+ * EXIF Orientation value → clockwise page rotation that shows the image upright.
+ * The mirrored variants (2, 4, 5, 7) come out upright but still mirrored, because a page
+ * rotation can't flip an image. Scanners and rear phone cameras don't produce them.
+ */
+const ROTATION_FOR_ORIENTATION: Record<number, number> = { 3: 180, 4: 180, 5: 90, 6: 90, 7: 270, 8: 270 }
 /** Resolution unit → multiplier to get dots per inch. JFIF and EXIF number their units differently. */
 const JFIF_UNIT_TO_DPI: Record<number, number> = { 1: 1, 2: 2.54 } // 0 means "aspect ratio only"
 const EXIF_UNIT_TO_DPI: Record<number, number> = { 2: 1, 3: 2.54 } // 1 means "no unit"
@@ -29,8 +34,9 @@ interface ExifrSegments {
  * pdf-lib's embedJpg stores the JPEG bytes as-is (no decoding or re-compression),
  * so the PDF holds a bit-for-bit copy of the original image. The file's metadata is
  * only used to pick the page size (from the scan DPI) and page rotation.
+ * `extraRotation` is the user's own clockwise rotation, applied on top of the EXIF one.
  */
-export async function addJpegPage(pdf: PDFDocument, bytes: Uint8Array): Promise<void> {
+export async function addJpegPage(pdf: PDFDocument, bytes: Uint8Array, extraRotation = 0): Promise<void> {
   const image = await pdf.embedJpg(bytes)
   const { dpiX, dpiY, orientation } = await readJpegMetadata(bytes)
 
@@ -43,8 +49,7 @@ export async function addJpegPage(pdf: PDFDocument, bytes: Uint8Array): Promise<
   const page = pdf.addPage([width, height])
   page.drawImage(image, { x: 0, y: 0, width, height })
 
-  const rotation = ROTATION_FOR_ORIENTATION[orientation]
-  if (rotation) page.setRotation(degrees(rotation))
+  rotatePage(page, (ROTATION_FOR_ORIENTATION[orientation] ?? 0) + extraRotation)
 }
 
 async function readJpegMetadata(bytes: Uint8Array) {

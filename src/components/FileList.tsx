@@ -1,7 +1,15 @@
 import { Button, Flex, List, Typography } from 'antd'
 import { ClearOutlined } from '@ant-design/icons'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { clearFilesAtom, filesAtom, moveFileAtom } from '../state/files'
 import { FileListItem } from './FileListItem'
@@ -10,8 +18,12 @@ export function FileList() {
   const files = useAtomValue(filesAtom)
   const moveFile = useSetAtom(moveFileAtom)
   const clearFiles = useSetAtom(clearFilesAtom)
-  // Require a small drag distance so clicks (e.g. on the delete button) aren't treated as drags.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    // Require a small drag distance so clicks (e.g. on the delete button) aren't treated as drags.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Focus a drag handle, press Space, move with the arrow keys, press Space again to drop.
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && active.id !== over.id) {
@@ -33,9 +45,10 @@ export function FileList() {
         <SortableContext items={files.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           <List
             bordered
+            rowKey="id"
             style={{ marginTop: 8 }}
             dataSource={files}
-            renderItem={(queued) => <FileListItem key={queued.id} queued={queued} />}
+            renderItem={(queued) => <FileListItem queued={queued} />}
           />
         </SortableContext>
       </DndContext>
