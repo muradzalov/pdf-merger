@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/pdf-merger/sw.js', { scope: '/pdf-merger/' })})}
