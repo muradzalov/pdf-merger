@@ -1,12 +1,16 @@
 import { App, Upload } from 'antd'
 import { InboxOutlined } from '@ant-design/icons'
 import { useSetAtom } from 'jotai'
-import { ACCEPTED_FILE_TYPES, detectFileKind } from '../lib/fileKinds'
-import { addFileAtom } from '../state/files'
+import { ACCEPTED_FILE_TYPES, detectFileKind, type FileKind } from '../lib/fileKinds'
+import { addFilesAtom } from '../state/files'
 
 export function FileDropzone() {
-  const addFile = useSetAtom(addFileAtom)
+  const addFiles = useSetAtom(addFilesAtom)
   const { message } = App.useApp()
+
+  const reportUnsupported = (names: string[]) => {
+    if (names.length > 0) message.error(`Skipped ${names.join(', ')}: only PDF and JPG files are supported`)
+  }
 
   return (
     <Upload.Dragger
@@ -15,15 +19,22 @@ export function FileDropzone() {
       showUploadList={false}
       onDrop={(e) => {
         // antd silently discards dropped files that don't match `accept`, so name them here.
-        const rejected = Array.from(e.dataTransfer.files).filter((f) => !detectFileKind(f))
-        if (rejected.length > 0) {
-          message.error(`Skipped ${rejected.map((f) => f.name).join(', ')}: only PDF and JPG files are supported`)
-        }
+        reportUnsupported(Array.from(e.dataTransfer.files).filter((f) => !detectFileKind(f)).map((f) => f.name))
       }}
-      beforeUpload={(file) => {
-        const kind = detectFileKind(file)
-        if (kind) addFile({ id: file.uid, file, kind, rotation: 0 })
-        else message.error(`${file.name} is not a PDF or JPG file`)
+      beforeUpload={(file, batch) => {
+        // antd calls this once per file, passing the whole drop/selection as `batch`.
+        // Handle the batch once (on its first file) so it can be added in sorted order.
+        if (file === batch[0]) {
+          const supported: { file: File; kind: FileKind }[] = []
+          const unsupported: string[] = []
+          for (const f of batch) {
+            const kind = detectFileKind(f)
+            if (kind) supported.push({ file: f, kind })
+            else unsupported.push(f.name)
+          }
+          addFiles(supported)
+          reportUnsupported(unsupported)
+        }
         // The list lives in jotai; tell antd not to track or upload the file.
         return Upload.LIST_IGNORE
       }}

@@ -1,6 +1,7 @@
 import { atom } from 'jotai'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { FileKind } from '../lib/fileKinds'
+import { compareFileNames } from '../lib/fileOrder'
 
 export type Rotation = 0 | 90 | 180 | 270
 
@@ -15,8 +16,23 @@ export interface QueuedFile {
 /** The files to merge, in the order their pages will appear in the output PDF. */
 export const filesAtom = atom<QueuedFile[]>([])
 
-export const addFileAtom = atom(null, (get, set, queued: QueuedFile) => {
-  set(filesAtom, [...get(filesAtom), queued])
+let nextId = 0
+
+/**
+ * Appends a batch of files (one drop or one file-picker selection), sorted by name.
+ * Browsers hand dropped files over in no reliable order (Windows Explorer puts the file you
+ * grabbed first), so sorting each batch makes adding files predictable.
+ */
+export const addFilesAtom = atom(null, (get, set, batch: { file: File; kind: FileKind }[]) => {
+  const added = [...batch]
+    .sort((a, b) => compareFileNames(a.file, b.file))
+    .map(({ file, kind }): QueuedFile => ({ id: `file-${nextId++}`, file, kind, rotation: 0 }))
+  set(filesAtom, [...get(filesAtom), ...added])
+})
+
+/** Sorts the whole list by file name. */
+export const sortFilesAtom = atom(null, (get, set) => {
+  set(filesAtom, [...get(filesAtom)].sort((a, b) => compareFileNames(a.file, b.file)))
 })
 
 export const removeFileAtom = atom(null, (get, set, id: string) => {
