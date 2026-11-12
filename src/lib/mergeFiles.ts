@@ -1,6 +1,7 @@
 import { PDFDocument } from 'pdf-lib'
 import type { QueuedFile } from '../state/files'
 import { addJpegPage } from './jpegPage'
+import { loadUnencryptedPdf } from './loadPdf'
 import { rotatePage } from './rotatePage'
 
 export interface MergeResult {
@@ -29,22 +30,8 @@ export async function mergeFiles(files: QueuedFile[]): Promise<MergeResult> {
   return { pdfBytes, failed }
 }
 
-const ENCRYPTED_PDF_MESSAGE =
-  'password-protected or restricted PDF. Open it and use Print → Save as PDF to make a copy that can be merged'
-
 async function appendPdfPages(target: PDFDocument, bytes: Uint8Array, rotation: number) {
-  let source: PDFDocument
-  try {
-    source = await PDFDocument.load(bytes, { ignoreEncryption: true, throwOnInvalidObject: false })
-  } catch (err) {
-    // Some encrypted PDFs (e.g. AES) can't even be parsed; say why instead of showing a parser error.
-    if (/\/Encrypt\b/.test(new TextDecoder('latin1').decode(bytes))) throw new Error(ENCRYPTED_PDF_MESSAGE)
-    throw err
-  }
-  // pdf-lib can't decrypt, and copying pages out of an encrypted PDF silently produces blank
-  // pages. That includes "restricted" PDFs (e.g. bank statements) that open without a password.
-  if (source.isEncrypted) throw new Error(ENCRYPTED_PDF_MESSAGE)
-
+  const source = await loadUnencryptedPdf(bytes)
   const pages = await target.copyPages(source, source.getPageIndices())
   for (const page of pages) {
     rotatePage(page, rotation)
