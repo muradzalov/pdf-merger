@@ -61,6 +61,8 @@ npm run dev
 npm run deploy
 ```
 
+Or `npm run ship` to deploy and `git push` the current branch in one go.
+
 This builds the site and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves
 (repo **Settings → Pages → Source: Deploy from a branch → `gh-pages`**). Pushing to `main` does not
 update the site by itself; run `npm run deploy` when you want the live version updated. A copy of the
