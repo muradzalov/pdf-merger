@@ -65,9 +65,10 @@ Or `npm run ship` to deploy and `git push` the current branch in one go.
 
 This builds the site and publishes `dist/` to the `gh-pages` branch, which GitHub Pages serves
 (repo **Settings → Pages → Source: Deploy from a branch → `gh-pages`**). Pushing to `main` does not
-update the site by itself; run `npm run deploy` when you want the live version updated. A copy of the
-site that's already open (or installed) shows a "new version available" prompt shortly after; click
-**Reload** there, or close all its tabs, to switch to the new version.
+update the site by itself; run `npm run deploy` when you want the live version updated. An open (or
+installed) copy picks up the new version when it's loaded or when you come back to its tab: with
+nothing in progress it switches right away; with files or a document open it shows a "new version
+available" prompt instead, and switches when you click **Reload**.
 
 ## How it works
 
