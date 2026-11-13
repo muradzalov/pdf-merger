@@ -22,6 +22,8 @@ the browser's address bar). Files are still processed only on your machine.
   since browsers hand dropped files over in no reliable order; **Sort A–Z** re-sorts the whole list
 - Long lists (100+ files) scroll inside their own box
 - Rotate a file's pages 90° at a time (for sideways scans)
+- Choose each image's page shape: **Auto** (matches the image), **Portrait** or **Landscape**. The image
+  is fitted onto the page without being turned
 - Choose the output file name
 - Remove one file or all of them
 - Files that can't be merged are skipped with a reason, including password-protected or restricted
@@ -81,7 +83,8 @@ available" prompt instead, and switches when you click **Reload**.
   letter-size page) and its EXIF orientation (so phone photos aren't sideways). Images without a
   real scan resolution (screenshots, phone photos: 72/96 DPI or none) each get a Letter page turned
   to match the image, scaled to fit inside a half-inch margin and centered, so every page comes out
-  the same size. Only the displayed size changes; the pixels are never resampled.
+  the same size (or Portrait / Landscape, if picked for that image). Only the displayed size changes;
+  the pixels are never resampled.
 - **Editor:** [pdf.js](https://mozilla.github.io/pdf.js/) (what Firefox uses) draws the pages; your edits
   sit on top as React components ([react-rnd](https://github.com/bokuweb/react-rnd) for moving and resizing,
   [perfect-freehand](https://github.com/steveruizok/perfect-freehand) for pen strokes). Download writes

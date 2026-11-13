@@ -11,6 +11,13 @@ import { rotatePage } from './rotatePage'
  */
 const LETTER = { short: 612, long: 792 }
 const MARGIN = 36
+/**
+ * The page shape for an image. 'auto': Letter in the image's own orientation (or, for a scan, the
+ * scanned paper's size). 'portrait' / 'landscape': a Letter page in that orientation, whatever the
+ * image, with the image fitted inside it. Unlike rotating, this never turns the image itself.
+ */
+export type PageOrientation = 'auto' | 'portrait' | 'landscape'
+
 /** A recorded resolution at or below this is a screen default, not a scan resolution. */
 const SCREEN_DPI = 96
 /** Largest page side PDF viewers reliably accept, in points (200 inches). */
@@ -43,21 +50,37 @@ interface ExifrSegments {
  * - a PNG is decoded and stored losslessly (pdf-lib's embedPng), transparency included.
  * A JPEG's metadata picks the page size (from the scan DPI) and rotation (from EXIF).
  * `extraRotation` is the user's own clockwise rotation, applied on top of the EXIF one.
+ * `pageOrientation` is the shape the page should have as the image is seen (after EXIF rotation).
  */
-export async function addImagePage(pdf: PDFDocument, bytes: Uint8Array, kind: ImageKind, extraRotation = 0) {
+export async function addImagePage(
+  pdf: PDFDocument,
+  bytes: Uint8Array,
+  kind: ImageKind,
+  extraRotation = 0,
+  pageOrientation: PageOrientation = 'auto',
+) {
   const image = kind === 'jpeg' ? await pdf.embedJpg(bytes) : await pdf.embedPng(bytes)
   const { dpi, orientation } = kind === 'jpeg' ? await readJpegMetadata(bytes) : { dpi: null, orientation: 1 }
-  const { pageWidth, pageHeight, x, y, width, height } = layout(image.width, image.height, dpi)
+  const exifRotation = ROTATION_FOR_ORIENTATION[orientation] ?? 0
+  // The page is laid out as the image is stored, then turned by the EXIF rotation. A quarter turn
+  // (a phone photo taken upright) swaps portrait and landscape, so ask for the opposite here.
+  const storedOrientation =
+    exifRotation % 180 === 0 || pageOrientation === 'auto'
+      ? pageOrientation
+      : pageOrientation === 'portrait'
+        ? 'landscape'
+        : 'portrait'
+  const { pageWidth, pageHeight, x, y, width, height } = layout(image.width, image.height, dpi, storedOrientation)
 
   const page = pdf.addPage([pageWidth, pageHeight])
   page.drawImage(image, { x, y, width, height })
 
-  rotatePage(page, (ROTATION_FOR_ORIENTATION[orientation] ?? 0) + extraRotation)
+  rotatePage(page, exifRotation + extraRotation)
 }
 
 /** The page size, and where the image goes on it, in points. */
-function layout(pixelWidth: number, pixelHeight: number, dpi: [number, number] | null) {
-  if (dpi && Math.min(...dpi) > SCREEN_DPI) {
+function layout(pixelWidth: number, pixelHeight: number, dpi: [number, number] | null, orientation: PageOrientation) {
+  if (orientation === 'auto' && dpi && Math.min(...dpi) > SCREEN_DPI) {
     // A scan: the page is the scanned paper's size (a 300 DPI letter scan becomes a letter page),
     // and the image fills it. It's already a page, so no margin.
     const shrink = Math.min(1, MAX_PAGE_SIDE / (Math.max(pixelWidth / dpi[0], pixelHeight / dpi[1]) * 72))
@@ -66,8 +89,8 @@ function layout(pixelWidth: number, pixelHeight: number, dpi: [number, number] |
     return { pageWidth: width, pageHeight: height, x: 0, y: 0, width, height }
   }
 
-  const [pageWidth, pageHeight] =
-    pixelWidth > pixelHeight ? [LETTER.long, LETTER.short] : [LETTER.short, LETTER.long]
+  const landscape = orientation === 'auto' ? pixelWidth > pixelHeight : orientation === 'landscape'
+  const [pageWidth, pageHeight] = landscape ? [LETTER.long, LETTER.short] : [LETTER.short, LETTER.long]
   // Scaled up or down to fit. Only the size it's shown at changes; the pixels are stored as-is.
   const scale = Math.min((pageWidth - 2 * MARGIN) / pixelWidth, (pageHeight - 2 * MARGIN) / pixelHeight)
   const width = pixelWidth * scale

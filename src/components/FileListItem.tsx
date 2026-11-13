@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Button, List, Space, Tag, Tooltip, Typography, theme } from 'antd'
+import { Button, List, Select, Space, Tag, Tooltip, Typography, theme } from 'antd'
 import {
   DeleteOutlined,
   FileImageOutlined,
@@ -10,11 +10,19 @@ import {
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useSetAtom } from 'jotai'
-import { removeFileAtom, rotateFileAtom, type QueuedFile } from '../state/files'
+import type { PageOrientation } from '../lib/imagePage'
+import { removeFileAtom, rotateFileAtom, setPageOrientationAtom, type QueuedFile } from '../state/files'
+
+const PAGE_ORIENTATION_OPTIONS: { value: PageOrientation; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'portrait', label: 'Portrait' },
+  { value: 'landscape', label: 'Landscape' },
+]
 
 export function FileListItem({ queued }: { queued: QueuedFile }) {
   const removeFile = useSetAtom(removeFileAtom)
   const rotateFile = useSetAtom(rotateFileAtom)
+  const setPageOrientation = useSetAtom(setPageOrientationAtom)
   const { token } = theme.useToken()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: queued.id })
   const { file, kind, rotation } = queued
@@ -32,6 +40,20 @@ export function FileListItem({ queued }: { queued: QueuedFile }) {
     <div ref={setNodeRef} style={style}>
       <List.Item
         actions={[
+          ...(kind !== 'pdf'
+            ? [
+                <Tooltip key="orientation" title="Page shape for this image">
+                  <Select<PageOrientation>
+                    size="small"
+                    value={queued.pageOrientation}
+                    onChange={(pageOrientation) => setPageOrientation({ id: queued.id, pageOrientation })}
+                    options={PAGE_ORIENTATION_OPTIONS}
+                    aria-label={`Page orientation for ${file.name}`}
+                    style={{ width: 104 }}
+                  />
+                </Tooltip>,
+              ]
+            : []),
           <Tooltip key="rotate" title="Rotate 90° clockwise">
             <Button
               type="text"

@@ -15,11 +15,11 @@ export async function mergeFiles(files: QueuedFile[]): Promise<MergeResult> {
   const merged = await PDFDocument.create()
   const failed: MergeResult['failed'] = []
 
-  for (const { file, kind, rotation } of files) {
+  for (const { file, kind, rotation, pageOrientation } of files) {
     try {
       const bytes = new Uint8Array(await file.arrayBuffer())
       if (kind === 'pdf') await appendPdfPages(merged, bytes, rotation)
-      else await addImagePage(merged, bytes, kind, rotation)
+      else await addImagePage(merged, bytes, kind, rotation, pageOrientation)
     } catch (err) {
       console.error(`Could not add ${file.name}`, err)
       failed.push({ name: file.name, reason: err instanceof Error ? err.message : String(err) })

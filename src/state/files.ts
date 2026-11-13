@@ -1,6 +1,7 @@
 import { atom } from 'jotai'
 import { arrayMove } from '@dnd-kit/sortable'
 import type { FileKind } from '../lib/fileKinds'
+import type { PageOrientation } from '../lib/imagePage'
 import { compareFileNames } from '../lib/fileOrder'
 
 export type Rotation = 0 | 90 | 180 | 270
@@ -11,6 +12,8 @@ export interface QueuedFile {
   kind: FileKind
   /** Extra clockwise rotation applied to every page of this file. */
   rotation: Rotation
+  /** For images: the page's shape (see PageOrientation). Ignored for PDFs. */
+  pageOrientation: PageOrientation
 }
 
 /** The files to merge, in the order their pages will appear in the output PDF. */
@@ -26,7 +29,7 @@ let nextId = 0
 export const addFilesAtom = atom(null, (get, set, batch: { file: File; kind: FileKind }[]) => {
   const added = [...batch]
     .sort((a, b) => compareFileNames(a.file, b.file))
-    .map(({ file, kind }): QueuedFile => ({ id: `file-${nextId++}`, file, kind, rotation: 0 }))
+    .map(({ file, kind }): QueuedFile => ({ id: `file-${nextId++}`, file, kind, rotation: 0, pageOrientation: 'auto' }))
   set(filesAtom, [...get(filesAtom), ...added])
 })
 
@@ -45,6 +48,13 @@ export const rotateFileAtom = atom(null, (get, set, id: string) => {
     get(filesAtom).map((f) => (f.id === id ? { ...f, rotation: ((f.rotation + 90) % 360) as Rotation } : f)),
   )
 })
+
+export const setPageOrientationAtom = atom(
+  null,
+  (get, set, { id, pageOrientation }: { id: string; pageOrientation: PageOrientation }) => {
+    set(filesAtom, get(filesAtom).map((f) => (f.id === id ? { ...f, pageOrientation } : f)))
+  },
+)
 
 export const clearFilesAtom = atom(null, (_get, set) => {
   set(filesAtom, [])
