@@ -76,8 +76,9 @@ site that's already open (or installed) shows a "new version available" prompt s
   **PNGs** (and pasted images) are stored losslessly with `embedPng`: every pixel, transparency included.
   [exifr](https://github.com/MikeKovarik/exifr) reads the scan's DPI (so a 300 DPI letter scan becomes a
   letter-size page) and its EXIF orientation (so phone photos aren't sideways). Images without a
-  real scan resolution (screenshots, phone photos: 72/96 DPI or none) get 1 pixel = 1 point, shrunk to
-  fit a Letter page, so a 12-megapixel photo isn't a 56-inch page. The pixels are never resampled.
+  real scan resolution (screenshots, phone photos: 72/96 DPI or none) each get a Letter page turned
+  to match the image, scaled to fit inside a half-inch margin and centered, so every page comes out
+  the same size. Only the displayed size changes; the pixels are never resampled.
 - **Editor:** [pdf.js](https://mozilla.github.io/pdf.js/) (what Firefox uses) draws the pages; your edits
   sit on top as React components ([react-rnd](https://github.com/bokuweb/react-rnd) for moving and resizing,
   [perfect-freehand](https://github.com/steveruizok/perfect-freehand) for pen strokes). Download writes

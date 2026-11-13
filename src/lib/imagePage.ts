@@ -5,10 +5,12 @@ import { rotatePage } from './rotatePage'
 
 /**
  * Images without a real print resolution (screenshots, phone photos, which say 72 or 96 DPI or
- * nothing) get 1 pixel = 1 point, shrunk if needed to fit a Letter page (8.5 × 11 in) in the
- * image's own orientation. Otherwise a 12-megapixel phone photo would become a 56 × 42 inch page.
+ * nothing) go on a Letter page (8.5 × 11 in) turned to match the image, scaled to fit inside a
+ * half-inch margin and centered, like printing a photo. So every page comes out the same size,
+ * whatever the image's pixel size.
  */
 const LETTER = { short: 612, long: 792 }
+const MARGIN = 36
 /** A recorded resolution at or below this is a screen default, not a scan resolution. */
 const SCREEN_DPI = 96
 /** Largest page side PDF viewers reliably accept, in points (200 inches). */
@@ -45,31 +47,32 @@ interface ExifrSegments {
 export async function addImagePage(pdf: PDFDocument, bytes: Uint8Array, kind: ImageKind, extraRotation = 0) {
   const image = kind === 'jpeg' ? await pdf.embedJpg(bytes) : await pdf.embedPng(bytes)
   const { dpi, orientation } = kind === 'jpeg' ? await readJpegMetadata(bytes) : { dpi: null, orientation: 1 }
-  const [width, height] = pageSize(image.width, image.height, dpi)
+  const { pageWidth, pageHeight, x, y, width, height } = layout(image.width, image.height, dpi)
 
-  const page = pdf.addPage([width, height])
-  page.drawImage(image, { x: 0, y: 0, width, height })
+  const page = pdf.addPage([pageWidth, pageHeight])
+  page.drawImage(image, { x, y, width, height })
 
   rotatePage(page, (ROTATION_FOR_ORIENTATION[orientation] ?? 0) + extraRotation)
 }
 
-/** Page size in points for an image of the given pixel size. */
-function pageSize(pixelWidth: number, pixelHeight: number, dpi: [number, number] | null): [number, number] {
-  let width: number
-  let height: number
+/** The page size, and where the image goes on it, in points. */
+function layout(pixelWidth: number, pixelHeight: number, dpi: [number, number] | null) {
   if (dpi && Math.min(...dpi) > SCREEN_DPI) {
-    // A scan: a 300 DPI letter-size scan becomes a letter-size page.
-    width = (pixelWidth / dpi[0]) * 72
-    height = (pixelHeight / dpi[1]) * 72
-  } else {
-    const [maxWidth, maxHeight] =
-      pixelWidth > pixelHeight ? [LETTER.long, LETTER.short] : [LETTER.short, LETTER.long]
-    const scale = Math.min(1, maxWidth / pixelWidth, maxHeight / pixelHeight)
-    width = pixelWidth * scale
-    height = pixelHeight * scale
+    // A scan: the page is the scanned paper's size (a 300 DPI letter scan becomes a letter page),
+    // and the image fills it. It's already a page, so no margin.
+    const shrink = Math.min(1, MAX_PAGE_SIDE / (Math.max(pixelWidth / dpi[0], pixelHeight / dpi[1]) * 72))
+    const width = (pixelWidth / dpi[0]) * 72 * shrink
+    const height = (pixelHeight / dpi[1]) * 72 * shrink
+    return { pageWidth: width, pageHeight: height, x: 0, y: 0, width, height }
   }
-  const shrink = Math.min(1, MAX_PAGE_SIDE / Math.max(width, height))
-  return [width * shrink, height * shrink]
+
+  const [pageWidth, pageHeight] =
+    pixelWidth > pixelHeight ? [LETTER.long, LETTER.short] : [LETTER.short, LETTER.long]
+  // Scaled up or down to fit. Only the size it's shown at changes; the pixels are stored as-is.
+  const scale = Math.min((pageWidth - 2 * MARGIN) / pixelWidth, (pageHeight - 2 * MARGIN) / pixelHeight)
+  const width = pixelWidth * scale
+  const height = pixelHeight * scale
+  return { pageWidth, pageHeight, x: (pageWidth - width) / 2, y: (pageHeight - height) / 2, width, height }
 }
 
 async function readJpegMetadata(bytes: Uint8Array) {
