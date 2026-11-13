@@ -4,8 +4,8 @@ import { PDFDocument } from 'pdf-lib'
 // also runs in e.g. Safari 18 and Chrome 125.
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
-import type { FileKind } from '../lib/fileKinds'
-import { addJpegPage } from '../lib/jpegPage'
+import type { FileKind, ImageKind } from '../lib/fileKinds'
+import { addImagePage } from '../lib/imagePage'
 import { loadUnencryptedPdf } from '../lib/loadPdf'
 import type { EditorDocument, EditorPage, Matrix } from './types'
 
@@ -16,14 +16,14 @@ GlobalWorkerOptions.workerSrc = workerUrl
 const pdfjsAssets = import.meta.env.DEV ? '/node_modules/pdfjs-dist/' : `${import.meta.env.BASE_URL}pdfjs/`
 
 /**
- * Reads a PDF or JPG file into an EditorDocument (a JPG becomes a one-page PDF).
+ * Reads a PDF or image file into an EditorDocument (an image becomes a one-page PDF).
  * Throws if the file is damaged, or is an encrypted PDF (with ENCRYPTED_PDF_MESSAGE).
  */
 export async function openEditorDocument(file: File, kind: FileKind): Promise<EditorDocument> {
   const fileBytes = new Uint8Array(await file.arrayBuffer())
   let bytes: Uint8Array
-  if (kind === 'jpeg') {
-    bytes = await jpegToPdf(fileBytes)
+  if (kind !== 'pdf') {
+    bytes = await imageToPdf(fileBytes, kind)
   } else {
     // Refuse encrypted PDFs now, not after the user has annotated a file that can't be saved.
     await loadUnencryptedPdf(fileBytes)
@@ -53,9 +53,9 @@ export async function openEditorDocument(file: File, kind: FileKind): Promise<Ed
   }
 }
 
-/** The JPG as a one-page PDF, sized and rotated the same way the Merge tab does it. */
-async function jpegToPdf(jpegBytes: Uint8Array): Promise<Uint8Array> {
+/** The image as a one-page PDF, sized and rotated the same way the Merge tab does it. */
+async function imageToPdf(imageBytes: Uint8Array, kind: ImageKind): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
-  await addJpegPage(pdf, jpegBytes)
+  await addImagePage(pdf, imageBytes, kind)
   return pdf.save()
 }

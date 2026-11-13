@@ -1,6 +1,8 @@
-# PDF Merger
+# Pagewright
 
-Combine PDFs and JPG scans into a single PDF, or fill in and sign a PDF, entirely in the browser.
+Formerly "PDF Merger" (the repo name and web address haven't changed).
+
+Combine PDFs, scans and screenshots into a single PDF, or fill in and sign a PDF, entirely in the browser.
 Nothing is uploaded anywhere.
 
 **Use it online:** https://muradzalov.github.io/pdf-merger/
@@ -12,7 +14,10 @@ the browser's address bar). Files are still processed only on your machine.
 
 ### Merge
 
-- Merge any mix of PDFs and JPGs, in the order you choose (drag the handle, or focus it and use Space + arrow keys)
+- Merge any mix of PDFs, JPGs and PNGs, in the order you choose (drag the handle, or focus it and use Space + arrow keys)
+- **Paste with Ctrl+V:** screenshots (e.g. Win+Shift+S), images copied from a web page or document, or files
+  copied in File Explorer. Pasted images are numbered ("Pasted image 1.png", ...) in paste order, and every
+  image shows a thumbnail
 - Files you add are put in name order automatically (`IMG_2` before `IMG_10`, `Scan` before `Scan (2)`),
   since browsers hand dropped files over in no reliable order; **Sort A–Z** re-sorts the whole list
 - Long lists (100+ files) scroll inside their own box
@@ -24,7 +29,7 @@ the browser's address bar). Files are still processed only on your machine.
 
 ### Edit & sign
 
-Open one PDF (or JPG) and:
+Open one PDF (or JPG/PNG) and:
 
 - **Text:** click anywhere to type, e.g. to fill in a form. Drag a corner to make the text bigger or
   smaller; pick its size and color in the toolbar.
@@ -68,9 +73,11 @@ site that's already open (or installed) shows a "new version available" prompt s
 - **PDFs** are merged page-by-page with [pdf-lib](https://pdf-lib.js.org).
 - **JPGs** are embedded with pdf-lib's `embedJpg`, which stores the original JPEG bytes unchanged
   (no re-compression), so the image in the PDF is bit-for-bit identical to the file you added.
+  **PNGs** (and pasted images) are stored losslessly with `embedPng`: every pixel, transparency included.
   [exifr](https://github.com/MikeKovarik/exifr) reads the scan's DPI (so a 300 DPI letter scan becomes a
-  letter-size page) and its EXIF orientation (so phone photos aren't sideways). A JPG with no DPI
-  info gets 1 pixel = 1 point.
+  letter-size page) and its EXIF orientation (so phone photos aren't sideways). Images without a
+  real scan resolution (screenshots, phone photos: 72/96 DPI or none) get 1 pixel = 1 point, shrunk to
+  fit a Letter page, so a 12-megapixel photo isn't a 56-inch page. The pixels are never resampled.
 - **Editor:** [pdf.js](https://mozilla.github.io/pdf.js/) (what Firefox uses) draws the pages; your edits
   sit on top as React components ([react-rnd](https://github.com/bokuweb/react-rnd) for moving and resizing,
   [perfect-freehand](https://github.com/steveruizok/perfect-freehand) for pen strokes). Download writes
@@ -85,17 +92,17 @@ src/
   App.tsx                     page layout: the Merge and Edit & sign tabs
   state/files.ts              jotai atoms: the file list + add/remove/rotate/reorder/sort/clear actions
   components/
-    FileDropzone.tsx          antd Upload.Dragger; adds files to state, reports unsupported ones
+    FileDropzone.tsx          drop / pick / paste (Ctrl+V) files; reports unsupported ones
     FileList.tsx              drag-to-reorder list (dnd-kit), Sort A–Z, Remove all
-    FileListItem.tsx          one row: rotate, remove, drag handle
+    FileListItem.tsx          one row: thumbnail, rotate, remove, drag handle
     MergeButton.tsx           output file name, runs the merge, shows result messages
     UpdatePrompt.tsx          "a new version is available" prompt
   lib/
-    fileKinds.ts              PDF vs JPG detection
+    fileKinds.ts              PDF / JPG / PNG detection
     fileOrder.ts              natural file name ordering (matches Windows Explorer)
     loadPdf.ts                loads a PDF with pdf-lib, refusing encrypted ones
     mergeFiles.ts             builds the merged PDF
-    jpegPage.ts               turns one JPG into one PDF page
+    imagePage.ts              turns one JPG or PNG into one PDF page (size, rotation)
     rotatePage.ts             adds a rotation to a page
     download.ts               output file name + triggers the browser download
   editor/
@@ -104,7 +111,7 @@ src/
     constants.ts              colors, sizes, zoom limits
     textMetrics.ts            text layout shared by the screen and the export
     ink.ts                    pen strokes → SVG paths (perfect-freehand)
-    pdfjs.ts                  pdf.js setup; opens a PDF or JPG for editing
+    pdfjs.ts                  pdf.js setup; opens a PDF or image for editing
     EditorPage.tsx            the tab: open a file, header (zoom, Close, Download), pages
     PdfPage.tsx               one page: pdf.js canvas (rendered when near the screen) + its edits
     EditorToolbar.tsx         tools, options, Undo/Delete, keyboard shortcuts

@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { downloadPdf, toPdfFileName } from '../lib/download'
-import { ACCEPTED_FILE_TYPES, detectFileKind } from '../lib/fileKinds'
+import { ACCEPTED_FILE_TYPES, detectFileKind, FILE_KIND_LABEL } from '../lib/fileKinds'
 import { ENCRYPTED_PDF_MESSAGE } from '../lib/loadPdf'
 import { MAX_ZOOM, MIN_ZOOM } from './constants'
 import { EditorToolbar } from './EditorToolbar'
@@ -35,7 +35,7 @@ function OpenFile() {
   const open = async (file: File) => {
     const kind = detectFileKind(file)
     if (!kind) {
-      message.error(`Can't open ${file.name}: only PDF and JPG files are supported`)
+      message.error(`Can't open ${file.name}: only PDF, JPG and PNG files are supported`)
       return
     }
     setOpening(true)
@@ -46,7 +46,7 @@ function OpenFile() {
       const reason =
         err instanceof Error && err.message === ENCRYPTED_PDF_MESSAGE
           ? err.message
-          : `the file is damaged or isn't a valid ${kind === 'jpeg' ? 'JPG' : 'PDF'}`
+          : `the file is damaged or isn't a valid ${FILE_KIND_LABEL[kind]}`
       message.error({ content: `Can't open ${file.name}: ${reason}`, duration: 10 })
     } finally {
       setOpening(false)
@@ -72,7 +72,7 @@ function OpenFile() {
         <p className="ant-upload-drag-icon">
           <InboxOutlined />
         </p>
-        <p className="ant-upload-text">{opening ? 'Opening…' : 'Click or drag a PDF or JPG here to fill it in or sign it'}</p>
+        <p className="ant-upload-text">{opening ? 'Opening…' : 'Click or drag a PDF or image here to fill it in or sign it'}</p>
         <p className="ant-upload-hint">Add text, draw, highlight or sign, then download the edited PDF.</p>
       </Upload.Dragger>
     </div>

@@ -1,9 +1,16 @@
 import exifr from 'exifr'
 import type { PDFDocument } from 'pdf-lib'
+import type { ImageKind } from './fileKinds'
 import { rotatePage } from './rotatePage'
 
-/** Resolution assumed when a JPEG doesn't record one: 1 pixel = 1 point. */
-const DEFAULT_DPI = 72
+/**
+ * Images without a real print resolution (screenshots, phone photos, which say 72 or 96 DPI or
+ * nothing) get 1 pixel = 1 point, shrunk if needed to fit a Letter page (8.5 × 11 in) in the
+ * image's own orientation. Otherwise a 12-megapixel phone photo would become a 56 × 42 inch page.
+ */
+const LETTER = { short: 612, long: 792 }
+/** A recorded resolution at or below this is a screen default, not a scan resolution. */
+const SCREEN_DPI = 96
 /** Largest page side PDF viewers reliably accept, in points (200 inches). */
 const MAX_PAGE_SIDE = 14400
 /**
@@ -29,27 +36,40 @@ interface ExifrSegments {
 }
 
 /**
- * Appends one page containing the JPEG to `pdf`.
- *
- * pdf-lib's embedJpg stores the JPEG bytes as-is (no decoding or re-compression),
- * so the PDF holds a bit-for-bit copy of the original image. The file's metadata is
- * only used to pick the page size (from the scan DPI) and page rotation.
+ * Appends one page containing the image to `pdf`. Nothing is lost:
+ * - a JPEG is stored as-is (pdf-lib's embedJpg keeps the original bytes, no re-compression);
+ * - a PNG is decoded and stored losslessly (pdf-lib's embedPng), transparency included.
+ * A JPEG's metadata picks the page size (from the scan DPI) and rotation (from EXIF).
  * `extraRotation` is the user's own clockwise rotation, applied on top of the EXIF one.
  */
-export async function addJpegPage(pdf: PDFDocument, bytes: Uint8Array, extraRotation = 0): Promise<void> {
-  const image = await pdf.embedJpg(bytes)
-  const { dpiX, dpiY, orientation } = await readJpegMetadata(bytes)
-
-  let width = (image.width / dpiX) * 72
-  let height = (image.height / dpiY) * 72
-  const shrink = Math.min(1, MAX_PAGE_SIDE / Math.max(width, height))
-  width *= shrink
-  height *= shrink
+export async function addImagePage(pdf: PDFDocument, bytes: Uint8Array, kind: ImageKind, extraRotation = 0) {
+  const image = kind === 'jpeg' ? await pdf.embedJpg(bytes) : await pdf.embedPng(bytes)
+  const { dpi, orientation } = kind === 'jpeg' ? await readJpegMetadata(bytes) : { dpi: null, orientation: 1 }
+  const [width, height] = pageSize(image.width, image.height, dpi)
 
   const page = pdf.addPage([width, height])
   page.drawImage(image, { x: 0, y: 0, width, height })
 
   rotatePage(page, (ROTATION_FOR_ORIENTATION[orientation] ?? 0) + extraRotation)
+}
+
+/** Page size in points for an image of the given pixel size. */
+function pageSize(pixelWidth: number, pixelHeight: number, dpi: [number, number] | null): [number, number] {
+  let width: number
+  let height: number
+  if (dpi && Math.min(...dpi) > SCREEN_DPI) {
+    // A scan: a 300 DPI letter-size scan becomes a letter-size page.
+    width = (pixelWidth / dpi[0]) * 72
+    height = (pixelHeight / dpi[1]) * 72
+  } else {
+    const [maxWidth, maxHeight] =
+      pixelWidth > pixelHeight ? [LETTER.long, LETTER.short] : [LETTER.short, LETTER.long]
+    const scale = Math.min(1, maxWidth / pixelWidth, maxHeight / pixelHeight)
+    width = pixelWidth * scale
+    height = pixelHeight * scale
+  }
+  const shrink = Math.min(1, MAX_PAGE_SIDE / Math.max(width, height))
+  return [width * shrink, height * shrink]
 }
 
 async function readJpegMetadata(bytes: Uint8Array) {
@@ -61,12 +81,11 @@ async function readJpegMetadata(bytes: Uint8Array) {
     console.warn('Could not read JPEG metadata; using defaults', err)
   }
 
-  const [dpiX, dpiY] =
+  const dpi =
     dpiFrom(meta?.jfif, JFIF_UNIT_TO_DPI) ??
-    dpiFrom({ ResolutionUnit: 2, ...meta?.ifd0 }, EXIF_UNIT_TO_DPI) ?? // EXIF defaults to inches
-    [DEFAULT_DPI, DEFAULT_DPI]
+    dpiFrom({ ResolutionUnit: 2, ...meta?.ifd0 }, EXIF_UNIT_TO_DPI) // EXIF defaults to inches
 
-  return { dpiX, dpiY, orientation: meta?.ifd0?.Orientation ?? 1 }
+  return { dpi, orientation: meta?.ifd0?.Orientation ?? 1 }
 }
 
 function dpiFrom(tags: ResolutionTags | undefined, unitToDpi: Record<number, number>): [number, number] | null {

@@ -57,9 +57,10 @@ export default defineConfig(({ command, isPreview }) => ({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
-        name: 'PDF Merger',
-        short_name: 'PDF Merger',
-        description: 'Merge PDFs and JPG scans, or fill in and sign a PDF, entirely in your browser.',
+        // "PDF" in the full name keeps the installed app findable by searching for "pdf".
+        name: 'Pagewright – PDF merge, fill & sign',
+        short_name: 'Pagewright',
+        description: 'Merge PDFs, scans and screenshots into one PDF, or fill in and sign a PDF, entirely in your browser.',
         theme_color: '#1677ff',
         background_color: '#ffffff',
         icons: [

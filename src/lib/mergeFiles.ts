@@ -1,6 +1,6 @@
 import { PDFDocument } from 'pdf-lib'
 import type { QueuedFile } from '../state/files'
-import { addJpegPage } from './jpegPage'
+import { addImagePage } from './imagePage'
 import { loadUnencryptedPdf } from './loadPdf'
 import { rotatePage } from './rotatePage'
 
@@ -18,8 +18,8 @@ export async function mergeFiles(files: QueuedFile[]): Promise<MergeResult> {
   for (const { file, kind, rotation } of files) {
     try {
       const bytes = new Uint8Array(await file.arrayBuffer())
-      if (kind === 'jpeg') await addJpegPage(merged, bytes, rotation)
-      else await appendPdfPages(merged, bytes, rotation)
+      if (kind === 'pdf') await appendPdfPages(merged, bytes, rotation)
+      else await addImagePage(merged, bytes, kind, rotation)
     } catch (err) {
       console.error(`Could not add ${file.name}`, err)
       failed.push({ name: file.name, reason: err instanceof Error ? err.message : String(err) })

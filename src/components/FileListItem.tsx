@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Button, List, Space, Tag, Tooltip, Typography, theme } from 'antd'
 import {
   DeleteOutlined,
@@ -53,12 +53,34 @@ export function FileListItem({ queued }: { queued: QueuedFile }) {
         <Space>
           {/* touch-action: none lets touchscreens drag the handle instead of scrolling the page */}
           <HolderOutlined style={{ cursor: 'grab', touchAction: 'none' }} {...attributes} {...listeners} />
-          {kind === 'jpeg' ? <FileImageOutlined /> : <FilePdfOutlined />}
+          {kind === 'pdf' ? <FilePdfOutlined /> : <ImageThumbnail file={file} rotation={rotation} />}
           <Typography.Text>{file.name}</Typography.Text>
           <Typography.Text type="secondary">({(file.size / 1024).toFixed(1)} KB)</Typography.Text>
           {rotation !== 0 && <Tag color="blue">↻ {rotation}°</Tag>}
         </Space>
       </List.Item>
     </div>
+  )
+}
+
+/** A small preview, so pasted screenshots ("Pasted image 1.png", ...) can be told apart. */
+function ImageThumbnail({ file, rotation }: { file: File; rotation: number }) {
+  const [url, setUrl] = useState<string>()
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file)
+    setUrl(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [file])
+
+  if (!url) return <FileImageOutlined />
+  return (
+    <img
+      src={url}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      // Shows the image turned the way the Rotate button will turn its page.
+      style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, transform: `rotate(${rotation}deg)`, display: 'block' }}
+    />
   )
 }

@@ -78,9 +78,9 @@ function MainPage() {
     <div style={{ padding: '40px 20px' }}>
       {/* Centered, because the tabs below are different widths. */}
       <div style={{ textAlign: 'center', marginBottom: 8 }}>
-        <Title level={2}>PDF Merger</Title>
+        <Title level={2}>Pagewright</Title>
         <Text type="secondary">
-          Merge PDFs and JPG scans, or fill in and sign a PDF. 100% local — your files never leave your computer.
+          Merge PDFs, scans and screenshots into one PDF, or fill in and sign a PDF. 100% local — your files never leave your computer.
         </Text>
       </div>
 
