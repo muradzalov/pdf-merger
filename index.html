@@ -8,7 +8,11 @@
     <link rel="icon" href="/pdf-merger/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/pdf-merger/apple-touch-icon-180x180.png" />
     <title>Pagewright</title>
-    <script type="module" crossorigin src="/pdf-merger/assets/index-tmCUWAKO.js"></script>
+    <style>
+      /* The app fills the window exactly; lists and pages scroll inside it, never the page itself. */
+      html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+    </style>
+    <script type="module" crossorigin src="/pdf-merger/assets/index-B-29d_CY.js"></script>
   <link rel="manifest" href="/pdf-merger/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>
