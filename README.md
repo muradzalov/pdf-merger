@@ -20,10 +20,13 @@ the browser's address bar). Files are still processed only on your machine.
   image shows a thumbnail
 - Files you add are put in name order automatically (`IMG_2` before `IMG_10`, `Scan` before `Scan (2)`),
   since browsers hand dropped files over in no reliable order; **Sort A–Z** re-sorts the whole list
-- Long lists (100+ files) scroll inside their own box
+- The app always fits the window: long lists (100+ files) scroll inside their own box, and the output
+  name and Merge button stay in view
 - Rotate a file's pages 90° at a time (for sideways scans)
-- Choose each image's page shape: **Auto** (matches the image), **Portrait** or **Landscape**. The image
-  is fitted onto the page without being turned
+- Choose each image's page shape: **Auto** (matches the image), **Portrait** or **Landscape** (the shape of
+  the finished page, however the image is rotated). The image is fitted onto the page without being turned
+- **Preview:** click a file to see the exact page it will become, rotate it or change its page shape right
+  there, and step through the list with ← / →
 - Choose the output file name
 - Remove one file or all of them
 - Files that can't be merged are skipped with a reason, including password-protected or restricted

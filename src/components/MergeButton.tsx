@@ -48,9 +48,11 @@ export function MergeButton() {
   }
 
   return (
-    <Flex vertical gap="small">
+    // One row, pinned under the list.
+    <Flex gap="small" wrap style={{ flexShrink: 0 }}>
       <Input
         size="large"
+        style={{ flex: 1, minWidth: 180 }}
         prefix={<FileTextOutlined />}
         suffix=".pdf"
         placeholder="merged"
@@ -59,7 +61,7 @@ export function MergeButton() {
         onChange={(e) => setFileName(e.target.value)}
         onPressEnter={handleMerge}
       />
-      <Button type="primary" size="large" block icon={<MergeCellsOutlined />} loading={merging} onClick={handleMerge}>
+      <Button type="primary" size="large" icon={<MergeCellsOutlined />} loading={merging} onClick={handleMerge}>
         Merge & Download
       </Button>
     </Flex>

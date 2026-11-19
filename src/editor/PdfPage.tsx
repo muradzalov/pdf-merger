@@ -25,11 +25,11 @@ export function PdfPage({ pdf, page, pageIndex }: { pdf: PDFDocumentProxy; page:
   const [isNearView, setIsNearView] = useState(false)
 
   useEffect(() => {
-    // "Near" = within one screen height above or below what's visible, so pages are usually ready
-    // by the time they scroll into view.
+    // "Near" = within one screen height above or below the visible part of the pages' scrolling box
+    // (see EditorPage), so pages are usually ready by the time they scroll into view.
     const observer = new IntersectionObserver(
       (entries) => setIsNearView(entries[entries.length - 1].isIntersecting),
-      { rootMargin: '100% 0px' },
+      { root: boxRef.current!.closest<HTMLElement>('[data-page-scroller]'), rootMargin: '100% 0px' },
     )
     observer.observe(boxRef.current!)
     return () => observer.disconnect()

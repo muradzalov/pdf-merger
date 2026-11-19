@@ -84,42 +84,43 @@ const COLUMN_WIDTH = 1100
 
 function DocumentView({ doc }: { doc: EditorDocument }) {
   const { token } = theme.useToken()
-  const columnRef = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
   const setZoom = useSetAtom(zoomAtom)
 
   // Each document opens at 100%, or smaller if that's wider than the screen (e.g. on a phone).
   // A layout effect, so the pages' first render already uses this zoom.
   useLayoutEffect(() => {
-    setZoom(clampZoom(Math.min(1, fitWidthZoom(doc, columnRef.current!))))
+    setZoom(clampZoom(Math.min(1, fitWidthZoom(doc, scrollerRef.current!))))
   }, [doc, setZoom])
 
   return (
-    <div>
-      {/* Stays at the top of the window while the pages scroll under it. */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: token.colorBgContainer }}>
-        <div ref={columnRef} style={{ maxWidth: COLUMN_WIDTH, margin: '0 auto' }}>
-          <DocumentHeader doc={doc} columnRef={columnRef} />
-          <EditorToolbar />
-        </div>
+    // Fills the tab: the header and toolbar stay put and only the pages scroll, under them.
+    <Flex vertical style={{ flex: 1, minHeight: 0 }}>
+      <div style={{ maxWidth: COLUMN_WIDTH, width: '100%', margin: '0 auto', flexShrink: 0 }}>
+        <DocumentHeader doc={doc} scrollerRef={scrollerRef} />
+        <EditorToolbar />
       </div>
-      {/* Full width rather than COLUMN_WIDTH, so a zoomed-in page can use the whole window. */}
-      <Flex vertical gap="middle" style={{ padding: `${token.padding}px 0` }}>
-        {doc.pages.map((page, i) => (
-          <PdfPage key={i} pdf={doc.pdf} page={page} pageIndex={i} />
-        ))}
-      </Flex>
-    </div>
+      {/* Full width rather than COLUMN_WIDTH, so a zoomed-in page can use the whole window.
+          PdfPage finds this box by data-page-scroller, to render the pages near its visible part. */}
+      <div ref={scrollerRef} data-page-scroller style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+        <Flex vertical gap="middle" style={{ padding: `${token.padding}px 0` }}>
+          {doc.pages.map((page, i) => (
+            <PdfPage key={i} pdf={doc.pdf} page={page} pageIndex={i} />
+          ))}
+        </Flex>
+      </div>
+    </Flex>
   )
 }
 
 const ZOOM_STEP = 0.25
 const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom))
-/** The zoom at which the widest page fills the column. */
-const fitWidthZoom = (doc: EditorDocument, column: HTMLElement) =>
-  column.clientWidth / Math.max(...doc.pages.map((page) => page.width))
+/** The zoom at which the widest page fills the pages' box (clientWidth leaves out its scrollbar). */
+const fitWidthZoom = (doc: EditorDocument, scroller: HTMLElement) =>
+  Math.min(scroller.clientWidth, COLUMN_WIDTH) / Math.max(...doc.pages.map((page) => page.width))
 
 /** File name, zoom, Close and Download. */
-function DocumentHeader({ doc, columnRef }: { doc: EditorDocument; columnRef: RefObject<HTMLDivElement> }) {
+function DocumentHeader({ doc, scrollerRef }: { doc: EditorDocument; scrollerRef: RefObject<HTMLDivElement> }) {
   const [zoom, setZoom] = useAtom(zoomAtom)
   const annotations = useAtomValue(annotationsAtom)
   const setDocument = useSetAtom(setDocumentAtom)
@@ -130,7 +131,7 @@ function DocumentHeader({ doc, columnRef }: { doc: EditorDocument; columnRef: Re
   // The buttons step along the 25% grid, so after "Fit width" (say 137%) they go to 150% / 125%.
   const zoomIn = () => setZoom(clampZoom((Math.floor(zoom / ZOOM_STEP) + 1) * ZOOM_STEP))
   const zoomOut = () => setZoom(clampZoom((Math.ceil(zoom / ZOOM_STEP) - 1) * ZOOM_STEP))
-  const fitWidth = () => setZoom(clampZoom(fitWidthZoom(doc, columnRef.current!)))
+  const fitWidth = () => setZoom(clampZoom(fitWidthZoom(doc, scrollerRef.current!)))
 
   const close = () => {
     if (annotations.length === 0) {

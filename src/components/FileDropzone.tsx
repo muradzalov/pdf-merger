@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { App, Upload } from 'antd'
-import { InboxOutlined } from '@ant-design/icons'
-import { useSetAtom, useStore } from 'jotai'
+import { InboxOutlined, PlusOutlined } from '@ant-design/icons'
+import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { ACCEPTED_FILE_TYPES, detectFileKind, type FileKind } from '../lib/fileKinds'
 import { addFilesAtom, filesAtom } from '../state/files'
 
 export function FileDropzone() {
   const addFiles = useSetAtom(addFilesAtom)
+  const hasFiles = useAtomValue(filesAtom).length > 0
   const store = useStore()
   const { message } = App.useApp()
 
@@ -51,6 +52,8 @@ export function FileDropzone() {
   return (
     <Upload.Dragger
       multiple
+      // Once files are added, a one-line strip, so the list gets the room.
+      height={hasFiles ? 48 : undefined}
       accept={ACCEPTED_FILE_TYPES}
       showUploadList={false}
       onDrop={(e) => {
@@ -68,11 +71,19 @@ export function FileDropzone() {
         return Upload.LIST_IGNORE
       }}
     >
-      <p className="ant-upload-drag-icon">
-        <InboxOutlined />
-      </p>
-      <p className="ant-upload-text">Click or drag PDF, JPG or PNG files here</p>
-      <p className="ant-upload-hint">Or paste screenshots and copied images with Ctrl+V</p>
+      {hasFiles ? (
+        <span>
+          <PlusOutlined /> Add more: click, drag, or paste (Ctrl+V)
+        </span>
+      ) : (
+        <>
+          <p className="ant-upload-drag-icon">
+            <InboxOutlined />
+          </p>
+          <p className="ant-upload-text">Click or drag PDF, JPG or PNG files here</p>
+          <p className="ant-upload-hint">Or paste screenshots and copied images with Ctrl+V</p>
+        </>
+      )}
     </Upload.Dragger>
   )
 }

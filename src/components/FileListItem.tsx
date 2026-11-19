@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Button, List, Select, Space, Tag, Tooltip, Typography, theme } from 'antd'
+import { Button, Flex, List, Select, Tag, Tooltip, Typography, theme } from 'antd'
 import {
   DeleteOutlined,
   FileImageOutlined,
@@ -19,7 +19,10 @@ const PAGE_ORIENTATION_OPTIONS: { value: PageOrientation; label: string }[] = [
   { value: 'landscape', label: 'Landscape' },
 ]
 
-export function FileListItem({ queued }: { queued: QueuedFile }) {
+const formatSize = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
+
+export function FileListItem({ queued, onPreview }: { queued: QueuedFile; onPreview: () => void }) {
   const removeFile = useSetAtom(removeFileAtom)
   const rotateFile = useSetAtom(rotateFileAtom)
   const setPageOrientation = useSetAtom(setPageOrientationAtom)
@@ -39,6 +42,7 @@ export function FileListItem({ queued }: { queued: QueuedFile }) {
   return (
     <div ref={setNodeRef} style={style}>
       <List.Item
+        styles={{ actions: { marginInlineStart: token.marginSM } }}
         actions={[
           ...(kind !== 'pdf'
             ? [
@@ -72,14 +76,42 @@ export function FileListItem({ queued }: { queued: QueuedFile }) {
           />,
         ]}
       >
-        <Space>
+        <Flex align="center" gap="small" style={{ flex: 1, minWidth: 0 }}>
           {/* touch-action: none lets touchscreens drag the handle instead of scrolling the page */}
           <HolderOutlined style={{ cursor: 'grab', touchAction: 'none' }} {...attributes} {...listeners} />
-          {kind === 'pdf' ? <FilePdfOutlined /> : <ImageThumbnail file={file} rotation={rotation} />}
-          <Typography.Text>{file.name}</Typography.Text>
-          <Typography.Text type="secondary">({(file.size / 1024).toFixed(1)} KB)</Typography.Text>
+          {/* Thumbnail and name together open the preview. */}
+          <Tooltip title="Preview" mouseEnterDelay={0.6}>
+            <button
+              type="button"
+              onClick={onPreview}
+              aria-label={`Preview ${file.name}`}
+              style={{
+                all: 'unset',
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: token.marginXS,
+                cursor: 'zoom-in',
+              }}
+            >
+              {kind === 'pdf' ? (
+                <FilePdfOutlined style={{ fontSize: 24, color: token.colorError, width: 32, flexShrink: 0 }} />
+              ) : (
+                <ImageThumbnail file={file} rotation={rotation} />
+              )}
+              <span style={{ minWidth: 0 }}>
+                <Typography.Text ellipsis style={{ display: 'block' }}>
+                  {file.name}
+                </Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {formatSize(file.size)}
+                </Typography.Text>
+              </span>
+            </button>
+          </Tooltip>
           {rotation !== 0 && <Tag color="blue">↻ {rotation}°</Tag>}
-        </Space>
+        </Flex>
       </List.Item>
     </div>
   )
@@ -94,7 +126,7 @@ function ImageThumbnail({ file, rotation }: { file: File; rotation: number }) {
     return () => URL.revokeObjectURL(objectUrl)
   }, [file])
 
-  if (!url) return <FileImageOutlined />
+  if (!url) return <FileImageOutlined style={{ fontSize: 24, width: 32, flexShrink: 0 }} />
   return (
     <img
       src={url}
@@ -102,7 +134,15 @@ function ImageThumbnail({ file, rotation }: { file: File; rotation: number }) {
       loading="lazy"
       decoding="async"
       // Shows the image turned the way the Rotate button will turn its page.
-      style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, transform: `rotate(${rotation}deg)`, display: 'block' }}
+      style={{
+        width: 32,
+        height: 32,
+        flexShrink: 0,
+        objectFit: 'cover',
+        borderRadius: 4,
+        transform: `rotate(${rotation}deg)`,
+        display: 'block',
+      }}
     />
   )
 }

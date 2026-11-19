@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button, Flex, List, Space, Typography } from 'antd'
 import { ClearOutlined, SortAscendingOutlined } from '@ant-design/icons'
 import {
@@ -14,9 +15,11 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { compareFileNames } from '../lib/fileOrder'
 import { clearFilesAtom, filesAtom, moveFileAtom, sortFilesAtom } from '../state/files'
 import { FileListItem } from './FileListItem'
+import { PagePreview } from './PagePreview'
 
 export function FileList() {
   const files = useAtomValue(filesAtom)
+  const [previewId, setPreviewId] = useState<string | null>(null)
   const moveFile = useSetAtom(moveFileAtom)
   const sortFiles = useSetAtom(sortFilesAtom)
   const clearFiles = useSetAtom(clearFilesAtom)
@@ -35,10 +38,11 @@ export function FileList() {
   }
 
   return (
-    <div>
+    // Takes the height left over in the Merge tab; only the list itself scrolls.
+    <Flex vertical style={{ flex: 1, minHeight: 0 }}>
       <Flex justify="space-between" align="center">
         <Typography.Text strong>
-          {files.length} file{files.length !== 1 ? 's' : ''} — drag to reorder
+          {files.length} file{files.length !== 1 ? 's' : ''} — drag to reorder, click to preview
         </Typography.Text>
         <Space size={0}>
           {/* Greyed out when the list is already in A–Z order */}
@@ -55,14 +59,15 @@ export function FileList() {
           <List
             bordered
             rowKey="id"
-            // Long lists scroll inside the box so the Merge button stays in view.
-            // Dragging near the top/bottom edge auto-scrolls (dnd-kit does this by default).
-            style={{ marginTop: 8, maxHeight: '60vh', overflowY: 'auto' }}
+            // Scrolls inside its box, so the Merge button stays in view. Dragging near the top or
+            // bottom edge auto-scrolls (dnd-kit does this by default).
+            style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}
             dataSource={files}
-            renderItem={(queued) => <FileListItem queued={queued} />}
+            renderItem={(queued) => <FileListItem queued={queued} onPreview={() => setPreviewId(queued.id)} />}
           />
         </SortableContext>
       </DndContext>
-    </div>
+      <PagePreview fileId={previewId} onChangeFile={setPreviewId} />
+    </Flex>
   )
 }

@@ -116,9 +116,9 @@ export function EditorToolbar() {
   return (
     <div
       style={{
-        position: 'sticky',
-        top: 0,
-        // Above the pages and their annotations, below antd's popups and modals (1000+).
+        // The signature hint is positioned against this. The z-index keeps that hint above the pages
+        // and their annotations, and below antd's popups and modals (1000+).
+        position: 'relative',
         zIndex: 100,
         background: token.colorBgContainer,
         padding: `${token.paddingXS}px 0`,

@@ -13,8 +13,9 @@ const LETTER = { short: 612, long: 792 }
 const MARGIN = 36
 /**
  * The page shape for an image. 'auto': Letter in the image's own orientation (or, for a scan, the
- * scanned paper's size). 'portrait' / 'landscape': a Letter page in that orientation, whatever the
- * image, with the image fitted inside it. Unlike rotating, this never turns the image itself.
+ * scanned paper's size), so a rotated image gets a page turned with it. 'portrait' / 'landscape':
+ * the page you end up with has that shape, whatever the image and however it's rotated; the image
+ * is fitted inside it. This never turns the image itself; rotating does that.
  */
 export type PageOrientation = 'auto' | 'portrait' | 'landscape'
 
@@ -50,7 +51,7 @@ interface ExifrSegments {
  * - a PNG is decoded and stored losslessly (pdf-lib's embedPng), transparency included.
  * A JPEG's metadata picks the page size (from the scan DPI) and rotation (from EXIF).
  * `extraRotation` is the user's own clockwise rotation, applied on top of the EXIF one.
- * `pageOrientation` is the shape the page should have as the image is seen (after EXIF rotation).
+ * `pageOrientation` is the shape the finished page should have, after both rotations.
  */
 export async function addImagePage(
   pdf: PDFDocument,
@@ -61,11 +62,12 @@ export async function addImagePage(
 ) {
   const image = kind === 'jpeg' ? await pdf.embedJpg(bytes) : await pdf.embedPng(bytes)
   const { dpi, orientation } = kind === 'jpeg' ? await readJpegMetadata(bytes) : { dpi: null, orientation: 1 }
-  const exifRotation = ROTATION_FOR_ORIENTATION[orientation] ?? 0
-  // The page is laid out as the image is stored, then turned by the EXIF rotation. A quarter turn
-  // (a phone photo taken upright) swaps portrait and landscape, so ask for the opposite here.
+  const rotation = (ROTATION_FOR_ORIENTATION[orientation] ?? 0) + extraRotation
+  // The page is laid out as the image is stored, then turned by the EXIF and the user's rotation. A
+  // quarter turn (e.g. a phone photo taken upright) swaps portrait and landscape, so ask for the
+  // opposite here to end up with the shape that was picked.
   const storedOrientation =
-    exifRotation % 180 === 0 || pageOrientation === 'auto'
+    rotation % 180 === 0 || pageOrientation === 'auto'
       ? pageOrientation
       : pageOrientation === 'portrait'
         ? 'landscape'
@@ -75,7 +77,7 @@ export async function addImagePage(
   const page = pdf.addPage([pageWidth, pageHeight])
   page.drawImage(image, { x, y, width, height })
 
-  rotatePage(page, exifRotation + extraRotation)
+  rotatePage(page, rotation)
 }
 
 /** The page size, and where the image goes on it, in points. */

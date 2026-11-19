@@ -8,6 +8,10 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
     <title>Pagewright</title>
+    <style>
+      /* The app fills the window exactly; lists and pages scroll inside it, never the page itself. */
+      html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

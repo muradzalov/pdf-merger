@@ -30,15 +30,7 @@ export async function openEditorDocument(file: File, kind: FileKind): Promise<Ed
     bytes = fileBytes
   }
 
-  const loadingTask = getDocument({
-    // A copy: pdf.js takes over (detaches) the buffer it's given, and `bytes` is needed for saving.
-    data: bytes.slice(),
-    // Decoders for JPEG 2000, JBIG2 and CCITT fax images. Scanned PDFs use them a lot; without
-    // them those images are left out.
-    wasmUrl: `${pdfjsAssets}wasm/`,
-    // Fonts for PDFs that use a standard font without embedding it (see copyPdfjsAssets).
-    standardFontDataUrl: `${pdfjsAssets}standard_fonts/`,
-  })
+  const loadingTask = loadPdfjsDocument(bytes)
   try {
     const pdf = await loadingTask.promise
     const pdfPages = await Promise.all(Array.from({ length: pdf.numPages }, (_, i) => pdf.getPage(i + 1)))
@@ -58,4 +50,45 @@ async function imageToPdf(imageBytes: Uint8Array, kind: ImageKind): Promise<Uint
   const pdf = await PDFDocument.create()
   await addImagePage(pdf, imageBytes, kind)
   return pdf.save()
+}
+
+function loadPdfjsDocument(bytes: Uint8Array) {
+  return getDocument({
+    // A copy: pdf.js takes over (detaches) the buffer it's given, and the caller may still need it.
+    data: bytes.slice(),
+    // Decoders for JPEG 2000, JBIG2 and CCITT fax images. Scanned PDFs use them a lot; without
+    // them those images are left out.
+    wasmUrl: `${pdfjsAssets}wasm/`,
+    // Fonts for PDFs that use a standard font without embedding it (see copyPdfjsAssets).
+    standardFontDataUrl: `${pdfjsAssets}standard_fonts/`,
+  })
+}
+
+/**
+ * Draws the first page of a PDF as an image (a data: URL) that fits in maxWidth × maxHeight CSS
+ * pixels, sharp on high-DPI screens. Used for page previews.
+ */
+export async function renderFirstPage(
+  bytes: Uint8Array,
+  maxWidth: number,
+  maxHeight: number,
+): Promise<{ url: string; width: number; height: number; pageCount: number }> {
+  const loadingTask = loadPdfjsDocument(bytes)
+  try {
+    const pdf = await loadingTask.promise
+    const page = await pdf.getPage(1)
+    const pageSize = page.getViewport({ scale: 1 })
+    const scale = Math.min(maxWidth / pageSize.width, maxHeight / pageSize.height)
+    const pixelRatio = window.devicePixelRatio || 1
+    const viewport = page.getViewport({ scale: scale * pixelRatio })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.floor(viewport.width)
+    canvas.height = Math.floor(viewport.height)
+    await page.render({ canvas, viewport }).promise
+    const url = canvas.toDataURL('image/png')
+    canvas.width = 0 // free the pixels now
+    return { url, width: pageSize.width * scale, height: pageSize.height * scale, pageCount: pdf.numPages }
+  } finally {
+    void loadingTask.destroy()
+  }
 }
